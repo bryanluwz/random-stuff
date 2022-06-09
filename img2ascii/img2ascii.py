@@ -19,7 +19,7 @@ class IMG2ASCIIConverter:
         self.ideal_h = 240
 
         self.gscale = [
-            '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~i!lI;:,"^`. ',
+            r'$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~i!lI;:,"^`. ',
             "@%#*+=-:. ",
         ]
 
@@ -67,6 +67,8 @@ class IMG2ASCIIConverter:
         if fpath is not None:
             self.write_to_txt(output_path, self.image_ascii_chars)
 
+        return self.image_ascii_chars
+
     def get_chars_from_grayscale_img(self, gscale, img_arr, max_value=256, min_value=0):
         img_chars = ""
         gscale_len = len(gscale)
@@ -111,7 +113,7 @@ class IMG2ASCIIConverter:
         self.h, self.w = self.image.shape
 
     # Save generated ascii text to image
-    def save_to_img(self, gscale=0):
+    def save_to_img(self, gscale=0, upscale=1):
         if self.image_ascii_chars == "":
             self.convert_IMG2ASCII(fpath=None, gscale=gscale)
 
@@ -119,7 +121,7 @@ class IMG2ASCIIConverter:
         lines = self.image_ascii_chars.split("\n")
 
         # Prepare font
-        fontsize = int(1000 / self.ideal_w)
+        fontsize = int(1000 / self.ideal_w) * upscale
         font = ImageFont.truetype("./consola.ttf", size=fontsize)
 
         # Get max width and heights of line to create canvas
@@ -167,6 +169,6 @@ if __name__ == "__main__":
     converter.set_ideal_scale(100, 100)
     converter.set_image("img2ascii\\test_folder\\uparupa2.png")
     converter.auto_scale()
-    # converter.convert_IMG2ASCII(gscale=0)
+    converter.convert_IMG2ASCII(gscale=0, fpath=None)
     converter.save_to_img(gscale=1)
     converter.write_to_img()

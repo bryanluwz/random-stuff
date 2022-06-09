@@ -3,7 +3,7 @@ import os
 import imageio
 import numpy as np
 import shutil
-from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
+from moviepy.editor import VideoFileClip, AudioFileClip
 
 import img2ascii
 
@@ -20,7 +20,7 @@ class VID2ASCIIConverter:
         self.temp_video_output_path = "./out.mp4"
         self.frames_output_dir = ""
         self.fps = 1
-        self.frame_count = 0       
+        self.frame_count = 0
 
     def set_ideal_scale(self, ideal_w, ideal_h):
         self.img2ascii_converter.set_ideal_scale(ideal_w, ideal_h)
@@ -33,7 +33,7 @@ class VID2ASCIIConverter:
 
         self.video_output_path = os.path.splitext(self.video_path)[0] + "_ascii.mp4"
 
-    def vid_to_ascii_frames(self, gscale=0, ext='jpg', write_frames_and_append=False):
+    def vid_to_ascii_frames(self, gscale=0, ext="jpg", write_frames_and_append=False):
         # Start reading video until ret == 0
         video_capture = cv2.VideoCapture(self.video_path)
         self.fps = video_capture.get(cv2.CAP_PROP_FPS)
@@ -49,7 +49,7 @@ class VID2ASCIIConverter:
             if not os.path.isdir(self.frames_output_dir):
                 os.mkdir(self.frames_output_dir)
             elif os.path.isdir(self.frames_output_dir):
-                if input("Directory already exist, overwrite (N?) ").lower() == 'n':
+                if input("Directory already exist, overwrite (Y?) ").lower() != 'y':
                     return
 
         i = 0
@@ -58,36 +58,39 @@ class VID2ASCIIConverter:
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             self.img2ascii_converter.set_image_by_cv2im_array(gray_frame)
-            
-            # Add frames into frames arrat
+
+            # Add frames into frames array
             self.img2ascii_converter.auto_scale()
-            
-            frame_name = f'frame_{i:0{frame_name_num_length}d}.{ext}'
+
+            frame_name = f"frame_{i:0{frame_name_num_length}d}.{ext}"
             output_path = os.path.join(self.frames_output_dir, frame_name)
 
             self.img2ascii_converter.convert_IMG2ASCII(fpath=None)
             ascii_frame = self.img2ascii_converter.save_to_img(gscale=gscale)
-            
+
             if write_frames_and_append:
                 self.write_frames_to_folder(frame=ascii_frame, fpath=output_path)
             else:
                 if self.writer is None or self.writer.closed:
-                    self.writer = imageio.get_writer(self.temp_video_output_path, fps=self.fps)
-                
-                self.append_frame_to_out(frame=np.array(ascii_frame), writer=self.writer)            
+                    self.writer = imageio.get_writer(
+                        self.temp_video_output_path, fps=self.fps
+                    )
+
+                self.append_frame_to_out(
+                    frame=np.array(ascii_frame), writer=self.writer
+                )
 
             ret, frame = video_capture.read()
-            
+
             i += 1
             print(f"Frame {i} out of {int(self.frame_count)} completed")
 
         self.writer.close()
 
-
     def write_frames_to_folder(self, frame, fpath):
         frame.save(fpath)
 
-    def frames_to_mp4(self, frames_dir="", fps=None, ext='jpg'):
+    def frames_to_mp4(self, frames_dir="", fps=None, ext="jpg"):
         if frames_dir == "":
             frames_dir = self.frames_output_dir
 
@@ -98,7 +101,7 @@ class VID2ASCIIConverter:
         for file in os.listdir(frames_dir):
             im = imageio.imread(os.path.join(frames_dir, file))
             writer.append_data(im)
-        
+
         writer.close()
 
     def append_frame_to_out(self, frame, writer):
@@ -111,21 +114,22 @@ class VID2ASCIIConverter:
 
     def add_original_soundtrack(self, del_temp=True):
         video_clip = VideoFileClip(self.temp_video_output_path)
-        audio_clip = AudioFileClip(self.video_path)    
+        audio_clip = AudioFileClip(self.video_path)
         video_clip = video_clip.set_audio(audio_clip)
         video_clip.write_videofile(self.video_output_path)
 
         if del_temp:
             os.remove(self.temp_video_output_path)
-    
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     vid2ascii_converter = VID2ASCIIConverter()
-    vid2ascii_converter.set_ideal_scale(50, 50)
+    vid2ascii_converter.set_ideal_scale(100, 100)
     vid2ascii_converter.set_video_path("./test_folder/chika_dance_Trim.mp4")
-    # vid2ascii_converter.vid_to_ascii_frames(write_frames_and_append=False)
+    vid2ascii_converter.vid_to_ascii_frames(write_frames_and_append=False)
 
     # Call this if write frames and append is set to true, that will write individual frames down to a file
-    vid2ascii_converter.frames_to_mp4()
-    vid2ascii_converter.delete_frames()
+    # vid2ascii_converter.frames_to_mp4()
+    # vid2ascii_converter.delete_frames()
 
     vid2ascii_converter.add_original_soundtrack(del_temp=False)
