@@ -3,9 +3,6 @@ import numpy as np
 import cv2
 import os
 
-import vid2ascii
-
-
 class IMG2ASCIIConverter:
     def __init__(self) -> None:
         self.image = None
@@ -17,6 +14,11 @@ class IMG2ASCIIConverter:
         self.h = 1
         self.ideal_w = 240
         self.ideal_h = 240
+
+        self.canvas_width = 0
+        self.canvas_height = 0
+        self.font = None
+        self.line_height = 0
 
         self.gscale = [
             r'$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~i!lI;:,"^`. ',
@@ -60,14 +62,15 @@ class IMG2ASCIIConverter:
             output_path = os.path.splitext(fpath)[0] + ".txt"
 
         self.final_scale_image()
-        self.image_ascii_chars = self.get_chars_from_grayscale_img(
+        image_ascii_chars = self.get_chars_from_grayscale_img(
             self.gscale[gscale], self.image
         )
+        self.image_ascii_chars = image_ascii_chars
 
         if fpath is not None:
             self.write_to_txt(output_path, self.image_ascii_chars)
 
-        return self.image_ascii_chars
+        return image_ascii_chars
 
     def get_chars_from_grayscale_img(self, gscale, img_arr, max_value=256, min_value=0):
         img_chars = ""
@@ -103,7 +106,7 @@ class IMG2ASCIIConverter:
         scale_ratio = min((self.ideal_w / self.w), (self.ideal_h / self.h))
         self.scale_image_ratio(scale_ratio)
 
-    def final_scale_image(self, w2h_ratio=5/2):
+    def final_scale_image(self, w2h_ratio=5 / 2):
         """
         Scale image before conversion so that final image does not look scaled
         """
@@ -113,36 +116,43 @@ class IMG2ASCIIConverter:
         self.h, self.w = self.image.shape
 
     # Save generated ascii text to image
-    def save_to_img(self, gscale=0, upscale=1):
-        if self.image_ascii_chars == "":
+    def save_to_img(self, gscale=0, upscale=1, custom_ascii=None):
+        if self.image_ascii_chars == "" and custom_ascii is not None:
             self.convert_IMG2ASCII(fpath=None, gscale=gscale)
 
         # Lines of ASCII
-        lines = self.image_ascii_chars.split("\n")
+        if custom_ascii is not None:
+            lines = custom_ascii
+        else:
+            lines = self.image_ascii_chars.split("\n")
 
         # Prepare font
         fontsize = int(1000 / self.ideal_w) * upscale
-        font = ImageFont.truetype("./consola.ttf", size=fontsize)
+
+        if self.font is None:
+            self.font = ImageFont.truetype("./consola.ttf", size=fontsize)
 
         # Get max width and heights of line to create canvas
-        font_points_to_pixels = lambda pt: round(pt * 96 / 72)
+        if self.canvas_width == 0 and self.canvas_height == 0:
+            font_points_to_pixels = lambda pt: round(pt * 96 / 72)
 
-        widest_line = max(lines, key=lambda s: font.getsize(s)[0])
-        widest_line_width = font_points_to_pixels(font.getsize(widest_line)[0])
+            widest_line = max(lines, key=lambda s: self.font.getsize(s)[0])
+            widest_line_width = font_points_to_pixels(self.font.getsize(widest_line)[0])
 
-        tallest_line = max(lines, key=lambda s: font.getsize(s)[1])
-        tallest_line_height = font_points_to_pixels(font.getsize(tallest_line)[1])
-        line_height = tallest_line_height * 1.05
+            tallest_line = max(lines, key=lambda s: self.font.getsize(s)[1])
+            tallest_line_height = font_points_to_pixels(self.font.getsize(tallest_line)[1])
+            line_height = tallest_line_height * 1.05
+            self.line_height = line_height
 
-        canvas_width = int(widest_line_width * 0.75)
-        canvas_height = int(line_height * len(lines))
+            self.canvas_width = int(widest_line_width * 0.75)
+            self.canvas_height = int(line_height * len(lines))
 
         # Writing text on image
-        canvas = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
+        canvas = Image.new("RGB", (self.canvas_width, self.canvas_height), (255, 255, 255))
         d = ImageDraw.Draw(canvas)
 
         for i in range(len(lines)):
-            d.text((0, i * line_height * 1.01), lines[i], fill=(0, 0, 0), font=font)
+            d.text((0, i * self.line_height * 1.01), lines[i], fill=(0, 0, 0), font=self.font)
 
         self.ascii_image = canvas
         return self.ascii_image
@@ -157,7 +167,7 @@ class IMG2ASCIIConverter:
         # Save image
         if pil_img is None:
             if self.ascii_image is None:
-                return
+                pil_img = self.save_to_img()
             else:
                 pil_img = self.ascii_image
 

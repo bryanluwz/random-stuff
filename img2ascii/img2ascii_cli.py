@@ -11,6 +11,9 @@ if __name__ == '__main__':
     parser.add_argument("-ih", "--ideal-height", help="Ideal chars for ASCII output height", default=100)
     parser.add_argument("-g", "--gscale-level", help="Type of ASCII scale to be used", default=0)
     parser.add_argument("-vid", "--is-video", help="Is type video or not", default=False, action="store_true")
+    parser.add_argument("-o", "--output", help="output_path")
+    parser.add_argument("-ot", "--temp-output", help="temp_output_path")
+    parser.add_argument("-d", "--debug", default=False, action="store_true")
 
     args = parser.parse_args()
 
@@ -20,8 +23,12 @@ if __name__ == '__main__':
         converter = vid2ascii.VID2ASCIIConverter()
         converter.set_ideal_scale(args.ideal_width, args.ideal_height)
         converter.set_video_path(args.video_file)
+        if args.output:
+            converter.video_output_path = args.output
+        if args.temp_output:
+            converter.video_output_path = args.temp_output
         converter.vid_to_ascii_frames(gscale=args.gscale_level, write_frames_and_append=False)
-        converter.add_original_soundtrack(del_temp=True)
+        converter.add_original_soundtrack(del_temp=not args.debug)
 
     else:
         converter = img2ascii.IMG2ASCIIConverter()

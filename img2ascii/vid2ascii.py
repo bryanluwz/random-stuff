@@ -4,6 +4,7 @@ import imageio
 import numpy as np
 import shutil
 from moviepy.editor import VideoFileClip, AudioFileClip
+import time
 
 import img2ascii
 
@@ -37,10 +38,12 @@ class VID2ASCIIConverter:
         # Start reading video until ret == 0
         video_capture = cv2.VideoCapture(self.video_path)
         self.fps = video_capture.get(cv2.CAP_PROP_FPS)
-        self.frame_count = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
+        self.frame_count = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        self.frames_buffer = [None] * self.frame_count
 
         # How many digits does the frame name needs
-        frame_name_num_length = len(str(int(self.frame_count)))
+        frame_name_num_length = len(str(self.frame_count))
 
         ret, frame = video_capture.read()
 
@@ -49,10 +52,15 @@ class VID2ASCIIConverter:
             if not os.path.isdir(self.frames_output_dir):
                 os.mkdir(self.frames_output_dir)
             elif os.path.isdir(self.frames_output_dir):
-                if input("Directory already exist, overwrite (Y?) ").lower() != 'y':
+                if input("Directory already exist, overwrite (Y?) ").lower() != "y":
                     return
 
         i = 0
+
+        t0 = time.time()
+
+        if self.writer is None or self.writer.closed:
+            self.writer = imageio.get_writer(self.temp_video_output_path, fps=self.fps)
 
         while ret:
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -61,29 +69,26 @@ class VID2ASCIIConverter:
 
             # Add frames into frames array
             self.img2ascii_converter.auto_scale()
-
-            frame_name = f"frame_{i:0{frame_name_num_length}d}.{ext}"
-            output_path = os.path.join(self.frames_output_dir, frame_name)
-
             self.img2ascii_converter.convert_IMG2ASCII(fpath=None)
             ascii_frame = self.img2ascii_converter.save_to_img(gscale=gscale)
 
-            if write_frames_and_append:
-                self.write_frames_to_folder(frame=ascii_frame, fpath=output_path)
-            else:
-                if self.writer is None or self.writer.closed:
-                    self.writer = imageio.get_writer(
-                        self.temp_video_output_path, fps=self.fps
-                    )
+            self.frames_buffer[i] = ascii_frame
 
-                self.append_frame_to_out(
-                    frame=np.array(ascii_frame), writer=self.writer
-                )
+            if write_frames_and_append:
+                frame_name = f"frame_{i:0{frame_name_num_length}d}.{ext}"
+                output_path = os.path.join(self.frames_output_dir, frame_name)
+                self.write_frames_to_folder(frame=ascii_frame, fpath=output_path)
 
             ret, frame = video_capture.read()
 
             i += 1
-            print(f"Frame {i} out of {int(self.frame_count)} completed")
+            print(
+                f"Frame {i} out of {int(self.frame_count)} completed, about {(self.frame_count - i) * (time.time() - t0) / i:.1f}s to go"
+            )
+
+        if not write_frames_and_append:
+            for frame in self.frames_buffer:
+                self.append_frame_to_out(frame=np.array(frame), writer=self.writer)
 
         self.writer.close()
 
@@ -106,7 +111,12 @@ class VID2ASCIIConverter:
 
     def append_frame_to_out(self, frame, writer):
         im = frame
-        writer.append_data(im)
+        try:
+            writer.append_data(im)
+        except:
+            print("Rewriting video due to ill formatting")
+            writer.close()
+            writer = imageio.get_writer(self.temp_video_output_path, fps=self.fps)
 
     def delete_frames(self):
         if os.path.isdir(self.frames_output_dir):
@@ -125,7 +135,7 @@ class VID2ASCIIConverter:
 if __name__ == "__main__":
     vid2ascii_converter = VID2ASCIIConverter()
     vid2ascii_converter.set_ideal_scale(100, 100)
-    vid2ascii_converter.set_video_path("./test_folder/chika_dance_Trim.mp4")
+    vid2ascii_converter.set_video_path("./test_folder/rick_roll.mp4")
     vid2ascii_converter.vid_to_ascii_frames(write_frames_and_append=False)
 
     # Call this if write frames and append is set to true, that will write individual frames down to a file
