@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import cv2
 import os
+import time
 
 class IMG2ASCIIConverter:
     def __init__(self) -> None:
@@ -175,10 +176,12 @@ class IMG2ASCIIConverter:
 
 
 if __name__ == "__main__":
+    t0 = time.time()
     converter = IMG2ASCIIConverter()
     converter.set_ideal_scale(100, 100)
-    converter.set_image("img2ascii\\test_folder\\uparupa2.png")
+    converter.set_image(".\\test_folder\\rick_astley.png")
     converter.auto_scale()
     converter.convert_IMG2ASCII(gscale=0, fpath=None)
     converter.save_to_img(gscale=1)
     converter.write_to_img()
+    print(f"{time.time() - t0}s")
