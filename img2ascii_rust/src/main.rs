@@ -294,7 +294,7 @@ pub mod vid2ascii_converter_module {
         // Initialise converter
         pub fn init_converter(&mut self) {
             self.img2ascii_converter.init();
-            self.img2ascii_converter.set_ideal_scale(100, 100);
+            self.img2ascii_converter.set_ideal_scale(200, 200);
         }
 
         // Set the video using opencv   

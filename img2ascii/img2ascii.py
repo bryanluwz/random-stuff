@@ -20,6 +20,7 @@ class IMG2ASCIIConverter:
         self.canvas_height = 0
         self.font = None
         self.line_height = 0
+        self.text_height = 0
 
         self.gscale = [
             r'$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~i!lI;:,"^`. ',
@@ -77,12 +78,26 @@ class IMG2ASCIIConverter:
         img_chars = ""
         gscale_len = len(gscale)
 
-        for i in img_arr:
-            for j in i:
-                img_chars += gscale[
-                    int((j / (max_value - min_value) + min_value) * gscale_len)
-                ]
-            img_chars += "\n"
+        # for i in img_arr:
+        #     for j in i:
+        #         img_chars += gscale[
+        #             int((j / (max_value - min_value) + min_value) * gscale_len)
+        #         ]
+        #     img_chars += "\n"
+
+        # List comprehension
+
+        img_chars = '\n'.join([''.join([gscale[int((j / (max_value - min_value) + min_value) * gscale_len)] for j in i]) for i in img_arr])
+        # for i in img_arr:
+            # ''.join([gscale[int((j / (max_value - min_value) + min_value) * gscale_len)] for j in i])
+            # for j in i:
+            #     img_chars += gscale[
+            #         int((j / (max_value - min_value) + min_value) * gscale_len)
+            #     ]
+            # img_chars += "\n"
+
+
+        # Write in list comprehension be fast
 
         return img_chars
 
@@ -142,6 +157,7 @@ class IMG2ASCIIConverter:
 
             tallest_line = max(lines, key=lambda s: self.font.getsize(s)[1])
             tallest_line_height = font_points_to_pixels(self.font.getsize(tallest_line)[1])
+            self.text_height = tallest_line_height
             line_height = tallest_line_height * 1.05
             self.line_height = line_height
 
@@ -152,11 +168,63 @@ class IMG2ASCIIConverter:
         canvas = Image.new("RGB", (self.canvas_width, self.canvas_height), (255, 255, 255))
         d = ImageDraw.Draw(canvas)
 
-        for i in range(len(lines)):
-            d.text((0, i * self.line_height * 1.01), lines[i], fill=(0, 0, 0), font=self.font)
+        # for i in range(len(lines)):
+        #     d.text((0, i * self.line_height * 1.01), lines[i], fill=(0, 0, 0), font=self.font)
+
+        # TODO fix this shit
+        _ = [d.text((0, i * self.line_height * 1.01), line, fill=(0, 0, 0), font=self.font) for i, line in enumerate(lines)]
+        # d.multiline_text((0, 0), self.image_ascii_chars, fill=(0, 0, 0), font=self.font, spacing=self.line_height * 0.05)
+
 
         self.ascii_image = canvas
         return self.ascii_image
+
+    def save_to_img_grayscale(self, gscale=0, upscale=1, custom_ascii=None):
+        if self.image_ascii_chars == "" and custom_ascii is not None:
+            self.convert_IMG2ASCII(fpath=None, gscale=gscale)
+
+        # Lines of ASCII
+        if custom_ascii is not None:
+            lines = custom_ascii
+        else:
+            lines = self.image_ascii_chars.split("\n")
+
+        # Prepare font
+        fontsize = int(1000 / self.ideal_w) * upscale
+
+        if self.font is None:
+            self.font = ImageFont.truetype("./consola.ttf", size=fontsize)
+
+        # Get max width and heights of line to create canvas
+        if self.canvas_width == 0 and self.canvas_height == 0:
+            font_points_to_pixels = lambda pt: round(pt * 96 / 72)
+
+            widest_line = max(lines, key=lambda s: self.font.getsize(s)[0])
+            widest_line_width = font_points_to_pixels(self.font.getsize(widest_line)[0])
+
+            tallest_line = max(lines, key=lambda s: self.font.getsize(s)[1])
+            tallest_line_height = font_points_to_pixels(self.font.getsize(tallest_line)[1])
+            self.text_height = tallest_line_height
+            line_height = tallest_line_height * 1.05
+            self.line_height = line_height
+
+            self.canvas_width = int(widest_line_width * 0.75)
+            self.canvas_height = int(line_height * len(lines))
+
+        # Writing text on image
+        canvas = Image.new("L", (self.canvas_width, self.canvas_height), 255)
+        d = ImageDraw.Draw(canvas)
+
+        # for i in range(len(lines)):
+        #     d.text((0, i * self.line_height * 1.01), lines[i], fill=0, font=self.font)
+
+        _ = [d.text((0, i * self.line_height * 1.01), line, fill=(0), font=self.font) for i, line in enumerate(lines)]
+        # d.multiline_text((0, 0), self.image_ascii_chars, fill=(0, 0, 0), font=self.font, spacing=self.line_height * 0.05)
+
+
+        self.ascii_image = canvas
+        return self.ascii_image
+    
 
     def write_to_img(self, pil_img=None, fpath="", ext="jpg"):
         # Create output path for image
@@ -181,7 +249,17 @@ if __name__ == "__main__":
     converter.set_ideal_scale(100, 100)
     converter.set_image(".\\test_folder\\rick_astley.png")
     converter.auto_scale()
+
+    t0 = time.time()
+
     converter.convert_IMG2ASCII(gscale=0, fpath=None)
-    converter.save_to_img(gscale=1)
-    converter.write_to_img()
+    
     print(f"{time.time() - t0}s")
+    
+    t0 = time.time()
+
+    converter.save_to_img_grayscale(gscale=0)
+    
+    print(f"{time.time() - t0}s")
+    
+    converter.write_to_img()

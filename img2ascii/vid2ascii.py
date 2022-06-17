@@ -6,7 +6,7 @@ import shutil
 from moviepy.editor import VideoFileClip, AudioFileClip
 import time
 
-import img2ascii
+import img2ascii_cairo as img2ascii
 
 
 class VID2ASCIIConverter:
@@ -34,7 +34,8 @@ class VID2ASCIIConverter:
 
         self.video_output_path = os.path.splitext(self.video_path)[0] + "_ascii.mp4"
 
-    def vid_to_ascii_frames(self, gscale=0, ext="jpg", write_frames_and_append=False):
+    def vid_to_ascii_frames(self, gscale=0, ext="jpg", write_frames_and_append=False, write_frames_while_processing=False):
+        print("Converting frames to ASCII and writing images...\n")
         # Start reading video until ret == 0
         video_capture = cv2.VideoCapture(self.video_path)
         self.fps = video_capture.get(cv2.CAP_PROP_FPS)
@@ -69,10 +70,25 @@ class VID2ASCIIConverter:
 
             # Add frames into frames array
             self.img2ascii_converter.auto_scale()
+
+            # t0 = time.time()
+
             self.img2ascii_converter.convert_IMG2ASCII(fpath=None)
+
+            # print(f"Conversion: {time.time() - t0}s")
+
+            # t0 = time.time()
+
+            # ascii_frame = self.img2ascii_converter.save_to_img_grayscale(gscale=gscale)
             ascii_frame = self.img2ascii_converter.save_to_img(gscale=gscale)
 
-            self.frames_buffer[i] = ascii_frame
+            # print(f"Save to image: {time.time() - t0}s")
+
+            if write_frames_while_processing and not write_frames_and_append:
+                self.append_frame_to_out(frame=np.array(ascii_frame), writer=self.writer)
+
+            elif not write_frames_while_processing and not write_frames_and_append:
+                self.frames_buffer[i] = ascii_frame
 
             if write_frames_and_append:
                 frame_name = f"frame_{i:0{frame_name_num_length}d}.{ext}"
@@ -86,11 +102,17 @@ class VID2ASCIIConverter:
                 f"Frame {i} out of {int(self.frame_count)} completed, about {(self.frame_count - i) * (time.time() - t0) / i:.1f}s to go"
             )
 
-        if not write_frames_and_append:
+        print()
+        print("Conversion and writing frames is done\n")
+        print("Creating video from frames...\n")
+
+        if not write_frames_and_append and not write_frames_while_processing:
             for frame in self.frames_buffer:
                 self.append_frame_to_out(frame=np.array(frame), writer=self.writer)
 
         self.writer.close()
+
+        print("Saving into video is done\n")
 
     def write_frames_to_folder(self, frame, fpath):
         frame.save(fpath)
@@ -114,7 +136,7 @@ class VID2ASCIIConverter:
         try:
             writer.append_data(im)
         except:
-            print("Rewriting video due to ill formatting")
+            print("Rewriting video due to ill formatting\n")
             writer.close()
             writer = imageio.get_writer(self.temp_video_output_path, fps=self.fps)
 
@@ -123,6 +145,8 @@ class VID2ASCIIConverter:
             shutil.rmtree(self.frames_output_dir)
 
     def add_original_soundtrack(self, del_temp=True):
+        print("Writing audio to video...\n")
+
         video_clip = VideoFileClip(self.temp_video_output_path)
         audio_clip = AudioFileClip(self.video_path)
         video_clip = video_clip.set_audio(audio_clip)
@@ -131,15 +155,22 @@ class VID2ASCIIConverter:
         if del_temp:
             os.remove(self.temp_video_output_path)
 
+        print("Writing done\n")
+
 
 if __name__ == "__main__":
     vid2ascii_converter = VID2ASCIIConverter()
     vid2ascii_converter.set_ideal_scale(100, 100)
-    vid2ascii_converter.set_video_path("./test_folder/rick_roll.mp4")
-    vid2ascii_converter.vid_to_ascii_frames(write_frames_and_append=False)
+    vid2ascii_converter.set_video_path("./test_folder/chika_dance_Trim.mp4")
+    vid2ascii_converter.vid_to_ascii_frames(write_frames_and_append=False, write_frames_while_processing=False)
 
     # Call this if write frames and append is set to true, that will write individual frames down to a file
     # vid2ascii_converter.frames_to_mp4()
     # vid2ascii_converter.delete_frames()
 
+    if not vid2ascii_converter.writer.closed:
+        vid2ascii_converter.writer.close()
+
     vid2ascii_converter.add_original_soundtrack(del_temp=False)
+
+

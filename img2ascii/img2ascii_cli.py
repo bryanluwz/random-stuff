@@ -14,6 +14,7 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output", help="output_path")
     parser.add_argument("-ot", "--temp-output", help="temp_output_path")
     parser.add_argument("-d", "--debug", default=False, action="store_true")
+    parser.add_argument("-wfwp", "--write-frames-while-processing", default=False, action="store_true")
 
     args = parser.parse_args()
 
@@ -27,7 +28,7 @@ if __name__ == '__main__':
             converter.video_output_path = args.output
         if args.temp_output:
             converter.video_output_path = args.temp_output
-        converter.vid_to_ascii_frames(gscale=args.gscale_level, write_frames_and_append=False)
+        converter.vid_to_ascii_frames(gscale=args.gscale_level, write_frames_and_append=False, write_frames_while_processing=args.write_frames_while_processing)
         converter.add_original_soundtrack(del_temp=not args.debug)
 
     else:
