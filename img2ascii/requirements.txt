@@ -1,7 +1,0 @@
-numpy
-pillow
-argparse
-moviepy
-imageio
-shutil
-opencv-contrib-python
